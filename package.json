@@ -1,0 +1,20 @@
+{
+  "name": "project-mgmt",
+  "version": "1.0.0",
+  "description": "a project management application for beginners",
+  "keywords": [
+    "project",
+    "management"
+  ],
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "sagar",
+  "license": "ISC",
+  "devDependencies": {
+    "prettier": "3.7.4"
+  }
+}

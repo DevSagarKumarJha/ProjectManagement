@@ -48,7 +48,7 @@ const userSchema = new Schema(
             type: String,
         },
         forgotPasswordToken: {
-            type: string,
+            type: String,
         },
         forgotPasswordExpiry: {
             type: Date,
@@ -65,18 +65,26 @@ const userSchema = new Schema(
     },
 );
 
-userSchema.pre("save", async function (next) {
-    if (!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+    if (!this.isModified("password")) return;
+
     this.password = await bcrypt.hash(this.password, 10);
-    next();
 });
+
 
 userSchema.methods.isPasswordCorrect = async function (password) {
     return await bcrypt.compare(password, this.password);
 };
 
+/**
+ * Generates a JWT refresh token for the user
+ *
+ * @method generateAccessToken
+ * @this import("mongoose").Document
+ * @returns {string} Signed JWT refresh token
+ */
 userSchema.methods.generateAccessToken = function () {
-    jwt.sign(
+    return jwt.sign(
         {
             _id: this._id,
             email: this.email,
@@ -87,15 +95,25 @@ userSchema.methods.generateAccessToken = function () {
     );
 };
 
+/**
+ * Generates a JWT refresh token for the user
+ *
+ * @method generateRefreshToken
+ * @this import("mongoose").Document
+ * @returns {string} Signed JWT refresh token
+ */
 userSchema.methods.generateRefreshToken = function () {
-    jwt.sign(
-        {
-            _id: this._id,
-        },
-        process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: process.env.REFRESH_TOKEN_EXPIRY },
-    );
+  return jwt.sign(
+    {
+      _id: this._id,
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
+    }
+  );
 };
+
 
 userSchema.methods.generateTemporaryToken = function () {
     const unHashedToken = crypto.randomBytes(20).toString("hex");

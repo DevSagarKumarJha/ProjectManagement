@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
-
+app.use(cookieParser())
 // cors configuration
 app.use(
     cors({
@@ -22,6 +22,7 @@ app.use(
 
 import healthCheckRouter  from "./routes/healthcheck.routes.js";
 import authRouter from "./routes/auth.routes.js"
+import cookieParser from "cookie-parser";
 // import  routes
 app.use("/api/v1/health-check/", healthCheckRouter)
 app.use("/api/v1/auth/", authRouter)

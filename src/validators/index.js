@@ -46,3 +46,4 @@ export const userLoginValidator = () => {
         body("password").notEmpty().withMessage("Password is required"),
     ];
 };
+

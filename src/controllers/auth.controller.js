@@ -3,16 +3,21 @@ import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { emailVerificationMailgenContent, sendEmail } from "../utils/mail.js";
+import crypto from "crypto";
 
 /**
- * Generates and persists access & refresh tokens for a user
+ * Generates and persists access and refresh tokens for a user.
+ *
+ * - Creates new JWT access and refresh tokens
+ * - Stores the refresh token in the user document
  *
  * @async
  * @function generateAccessAndRefreshToken
  * @param {import("mongoose").Types.ObjectId | string} userId - User document ID
- * @returns {Promise<{ accessToken: string, refreshToken: string }>}
+ * @returns {Promise<{ accessToken: string, refreshToken: string }>} Generated tokens
  * @throws {ApiError} 500 - If token generation or persistence fails
  */
+
 const generateAccessAndRefreshToken = async (userId) => {
     try {
         const user = await User.findById(userId);
@@ -33,16 +38,22 @@ const generateAccessAndRefreshToken = async (userId) => {
 };
 
 /**
- * Register a new user
+ * Registers a new user and sends an email verification link.
+ *
+ * - Creates a new user account
+ * - Generates an email verification token
+ * - Sends a verification email to the user
  *
  * @async
  * @function registerUser
- * @param {import("express").Request} req - Express request object
+ * @param {import("express").Request} req - Express request object containing user registration data
  * @param {import("express").Response} res - Express response object
  * @throws {ApiError} 400 - If required fields are missing
- * @throws {ApiError} 409 - If user with email or username already exists
- * @returns {Promise<void>} JSON response with created user data
+ * @throws {ApiError} 409 - If a user with the same email or username already exists
+ * @throws {ApiError} 500 - If user creation or email sending fails
+ * @returns {Promise<void>} Sends a JSON response with the created user data
  */
+
 
 const registerUser = asyncHandler(async (req, res) => {
     const { email, username, fullname, password } = req.body;
@@ -77,7 +88,7 @@ const registerUser = asyncHandler(async (req, res) => {
         subject: "Please verify your email",
         mailgenContent: emailVerificationMailgenContent(
             user.username,
-            `${req.protocol}://${req.get("host")}/api/v1/users/verify-email/${unHashedToken}`,
+            `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`,
         ),
     });
 
@@ -102,7 +113,24 @@ const registerUser = asyncHandler(async (req, res) => {
         );
 });
 
-const login = asyncHandler(async (req, res) => {
+/**
+ * Authenticates a user and issues access and refresh tokens.
+ *
+ * - Validates user credentials
+ * - Generates new access and refresh tokens
+ * - Sets tokens in HTTP-only cookies
+ *
+ * @async
+ * @function loginUser
+ * @param {import("express").Request} req - Express request object containing login credentials
+ * @param {import("express").Response} res - Express response object
+ * @throws {ApiError} 400 - If required credentials are missing
+ * @throws {ApiError} 401 - If credentials are invalid
+ * @throws {ApiError} 404 - If the user does not exist
+ * @returns {Promise<void>} Sends a JSON response confirming successful login
+ */
+
+const loginUser = asyncHandler(async (req, res) => {
     const { email, username, password } = req.body;
 
     if (!email) throw new ApiError(400, "Username or email is required");
@@ -141,12 +169,27 @@ const login = asyncHandler(async (req, res) => {
         );
 });
 
-export const logoutUser = asyncHandler(async (req, res) => {
+/**
+ * Logs out the currently authenticated user.
+ *
+ * - Removes the stored refresh token from the database
+ * - Clears access and refresh token cookies from the client
+ *
+ * @async
+ * @function logoutUser
+ * @param {import("express").Request} req - Express request object containing the authenticated user (`req.user`)
+ * @param {import("express").Response} res - Express response object
+ * @returns {Promise<void>} Sends a JSON response confirming successful logout
+ */
+
+const logoutUser = asyncHandler(async (req, res) => {
+    console.log(req.user._id);
+
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: {
-                refreshToken: undefined,
+            $unset: {
+                refreshToken: 1,
             },
         },
         { new: true },
@@ -164,4 +207,70 @@ export const logoutUser = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, {}, "User logged out"));
 });
 
-export { registerUser, login };
+/**
+ * Returns the currently authenticated user's data.
+ *
+ * @async
+ * @function getCurrentUser
+ * @param {import("express").Request} req - Express request object containing the authenticated user (`req.user`)
+ * @param {import("express").Response} res - Express response object
+ * @returns {Promise<void>} Sends a JSON response with the current user data
+ */
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+    res.status(200).json(
+        new ApiResponse(
+            200,
+            { user: req.user },
+            "Current user fetched successfully",
+        ),
+    );
+});
+
+
+/**
+ * Verifies a user's email address using a verification token.
+ *
+ * - Validates the email verification token
+ * - Marks the user's email as verified
+ * - Clears email verification token fields
+ *
+ * @async
+ * @function verifyUserEmail
+ * @param {import("express").Request} req - Express request object containing the verification token in params
+ * @param {import("express").Response} res - Express response object
+ * @throws {ApiError} 400 - If the token is missing, invalid, or expired
+ * @returns {Promise<void>} Sends a JSON response confirming email verification
+ */
+
+const verifyUserEmail = asyncHandler(async (req, res) => {
+    const { verificationToken } = req.params;
+
+    if (!verificationToken)
+        throw new ApiError(400, "Email verification token is missing");
+
+    const hashedToken = crypto
+        .createHash("sha256")
+        .update(verificationToken)
+        .digest("hex");
+
+    const user = await User.findOne({
+        emailVerificationToken: hashedToken,
+        emailVerificationExpiry: { $gt: Date.now() },
+    });
+
+    if(!user) throw new ApiError(400, "Token is invalid or expired");
+
+    user.emailVerificationToken= undefined,
+    user.emailVerificationExpiry= undefined
+    user.isEmailVerified= true;
+    await user.save({validateBeforeSave: false});
+
+    return res.status(200).json(new ApiResponse(200, {isEmailVerified:true}, "Email is verified"))
+});
+
+// const getCurrentUser = asyncHandler(async (req, res)=>{
+
+// })
+
+export { registerUser, loginUser, logoutUser, getCurrentUser, verifyUserEmail };

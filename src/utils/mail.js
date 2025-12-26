@@ -1,6 +1,22 @@
 import Mailgen from "mailgen";
 import nodemailer from "nodemailer";
 
+
+/**
+ * Sends an email using Nodemailer and Mailgen templates.
+ *
+ * - Generates both HTML and plaintext email bodies
+ * - Uses SMTP credentials from environment variables
+ * - Fails silently with console logging if email sending fails
+ *
+ * @async
+ * @function sendEmail
+ * @param {Object} options - Email configuration options
+ * @param {string} options.email - Recipient email address
+ * @param {string} options.subject - Email subject line
+ * @param {Object} options.mailgenContent - Mailgen-compatible email body content
+ * @returns {Promise<void>} Resolves when email is sent or fails silently
+ */
 const sendEmail = async (options) => {
     const mailGenerator = new Mailgen({
         theme: "default",
@@ -41,6 +57,14 @@ const sendEmail = async (options) => {
     }
 };
 
+/**
+ * Generates Mailgen content for email verification emails.
+ *
+ * @function emailVerificationMailgenContent
+ * @param {string} username - Recipient's username
+ * @param {string} verificationUrl - Email verification URL
+ * @returns {Object} Mailgen email body configuration
+ */
 const emailVerificationMailgenContent = (username, verificationUrl) => {
     return {
         body: {
@@ -60,6 +84,14 @@ const emailVerificationMailgenContent = (username, verificationUrl) => {
     };
 };
 
+/**
+ * Generates Mailgen content for forgot-password emails.
+ *
+ * @function forgotPasswordMailgenContent
+ * @param {string} username - Recipient's username
+ * @param {string} passwordResetUrl - Password reset URL
+ * @returns {Object} Mailgen email body configuration
+ */
 const forgotPasswordMailgenContent = (username, passwordResetUrl) => {
     return {
         body: {

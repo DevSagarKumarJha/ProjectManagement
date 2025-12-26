@@ -1,10 +1,16 @@
 import { body } from "express-validator";
 
 /**
- * Validation rules for user registration request
+ * Validation rules for user registration requests.
+ *
+ * Validates:
+ * - Email format and presence
+ * - Username format and length
+ * - Password strength
+ * - Optional full name
  *
  * @function userRegisterValidator
- * @returns {import("express-validator").ValidationChain[]}
+ * @returns {import("express-validator").ValidationChain[]} Array of validation chains
  */
 export const userRegisterValidator = () => {
     return [
@@ -40,10 +46,19 @@ export const userRegisterValidator = () => {
     ];
 };
 
+/**
+ * Validation rules for user login requests.
+ *
+ * Validates:
+ * - Optional email format
+ * - Required password
+ *
+ * @function userLoginValidator
+ * @returns {import("express-validator").ValidationChain[]} Array of validation chains
+ */
 export const userLoginValidator = () => {
     return [
         body("email").optional().isEmail().withMessage("Email is invalid"),
         body("password").notEmpty().withMessage("Password is required"),
     ];
 };
-

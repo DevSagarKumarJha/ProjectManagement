@@ -54,7 +54,6 @@ const generateAccessAndRefreshToken = async (userId) => {
  * @returns {Promise<void>} Sends a JSON response with the created user data
  */
 
-
 const registerUser = asyncHandler(async (req, res) => {
     const { email, username, fullname, password } = req.body;
     const existingUser = await User.findOne({
@@ -227,7 +226,6 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     );
 });
 
-
 /**
  * Verifies a user's email address using a verification token.
  *
@@ -259,18 +257,77 @@ const verifyUserEmail = asyncHandler(async (req, res) => {
         emailVerificationExpiry: { $gt: Date.now() },
     });
 
-    if(!user) throw new ApiError(400, "Token is invalid or expired");
+    if (!user) throw new ApiError(400, "Token is invalid or expired");
 
-    user.emailVerificationToken= undefined,
-    user.emailVerificationExpiry= undefined
-    user.isEmailVerified= true;
-    await user.save({validateBeforeSave: false});
+    ((user.emailVerificationToken = undefined),
+        (user.emailVerificationExpiry = undefined));
+    user.isEmailVerified = true;
+    await user.save({ validateBeforeSave: false });
 
-    return res.status(200).json(new ApiResponse(200, {isEmailVerified:true}, "Email is verified"))
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                { isEmailVerified: true },
+                "Email is verified",
+            ),
+        );
 });
 
+/**
+ * Resends email verification link to an unverified user.
+ *
+ * - Fetches the authenticated user from the database
+ * - Prevents resending if the email is already verified
+ * - Generates a new temporary verification token
+ * - Stores the hashed token and expiry on the user document
+ * - Sends a verification email containing the raw token
+ *
+ * @async
+ * @function resendEmailVerification
+ * @param {import("express").Request} req - Express request object (expects authenticated user in req.user)
+ * @param {import("express").Response} res - Express response object
+ * @throws {ApiError} 404 - If user does not exist
+ * @throws {ApiError} 409 - If email is already verified
+ * @returns {Promise<void>} JSON response confirming email dispatch
+ */
+const resendEmailVerification = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user?._id);
+    if (!user) throw new ApiError(404, "User not found");
+
+    if (user.isEmailVerified)
+        throw new ApiError(409, "Email is already verified");
+
+    const { unHashedToken, hashedToken, tokenExpiry } =
+        user.generateTemporaryToken();
+    user.emailVerificationToken = hashedToken;
+    user.emailVerificationExpiry = tokenExpiry;
+
+    await user.save({ validateBeforeSave: false });
+
+    await sendEmail({
+        email: user?.email,
+        subject: "Please verify your email",
+        mailgenContent: emailVerificationMailgenContent(
+            user.username,
+            `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`,
+        ),
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, {}, "Mail has been sent to your email id"));
+});
 // const getCurrentUser = asyncHandler(async (req, res)=>{
 
 // })
 
-export { registerUser, loginUser, logoutUser, getCurrentUser, verifyUserEmail };
+export {
+    registerUser,
+    loginUser,
+    logoutUser,
+    getCurrentUser,
+    verifyUserEmail,
+    resendEmailVerification,
+};

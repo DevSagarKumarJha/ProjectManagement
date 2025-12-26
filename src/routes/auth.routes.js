@@ -4,6 +4,7 @@ import {
     loginUser,
     logoutUser,
     registerUser,
+    resendEmailVerification,
     verifyUserEmail,
 } from "../controllers/auth.controller.js";
 import { validate } from "../middlewares/validator.middleware.js";
@@ -76,5 +77,17 @@ router.get("/me", verifyJWT, getCurrentUser);
  * @throws {ApiError} 400 - Token missing, invalid, or expired
  */
 router.get("/verify-email/:verificationToken", verifyUserEmail);
+
+/**
+ * Resend email verification link
+ *
+ * @route POST /api/v1/auth/resend-email-verification
+ * @access Private
+ *
+ * @middleware verifyJWT - Ensures the user is authenticated
+ * @controller resendEmailVerification - Generates and sends a new verification email
+ */
+router.post("/resend-email-verification", verifyJWT, resendEmailVerification);
+
 
 export default router;

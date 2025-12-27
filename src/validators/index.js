@@ -62,3 +62,80 @@ export const userLoginValidator = () => {
         body("password").notEmpty().withMessage("Password is required"),
     ];
 };
+
+/**
+ * Validation rules for changing the current user's password
+ *
+ * @function userChangePasswordValidator
+ * @returns {import("express-validator").ValidationChain[]}
+ *
+ * @description
+ * Ensures the old password is provided and the new password
+ * meets minimum security requirements.
+ */
+export const userChangePasswordValidator = () => {
+    return [
+        body("oldPassword")
+            .notEmpty()
+            .withMessage("Current password is required"),
+
+        body("newPassword")
+            .notEmpty()
+            .withMessage("Password is required")
+            .isLength({ min: 6 })
+            .withMessage("Password must be at least 6 characters long")
+            .matches(
+                /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/,
+            )
+            .withMessage(
+                "Password must contain at least one letter, one number, and one special character",
+            ),
+    ];
+};
+
+/**
+ * Validation rules for forgot password request
+ *
+ * @function userForgotPasswordValidator
+ * @returns {import("express-validator").ValidationChain[]}
+ *
+ * @description
+ * Validates that a proper email address is provided
+ * for initiating a password reset request.
+ */
+export const userForgotPasswordValidator = () => {
+    return [
+        body("email")
+            .trim()
+            .notEmpty()
+            .withMessage("Email is required")
+            .isEmail()
+            .withMessage("Invalid email"),
+    ];
+};
+
+/**
+ * Validation rules for resetting forgotten password
+ *
+ * @function userResetForgotPasswordValidator
+ * @returns {import("express-validator").ValidationChain[]}
+ *
+ * @description
+ * Ensures the new password meets defined security constraints
+ * when resetting a forgotten password.
+ */
+export const userResetForgotPasswordValidator = () => {
+    return [
+        body("newPassword")
+            .notEmpty()
+            .withMessage("Password is required")
+            .isLength({ min: 6 })
+            .withMessage("Password must be at least 6 characters long")
+            .matches(
+                /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/,
+            )
+            .withMessage(
+                "Password must contain at least one letter, one number, and one special character",
+            ),
+    ];
+};
